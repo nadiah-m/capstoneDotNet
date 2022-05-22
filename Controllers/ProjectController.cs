@@ -257,6 +257,47 @@ namespace capstoneDotNet.Controllers
             return _objResponseModel;
         }
 
+        
+        //link user to project
+
+        [Route("UserProjects")]
+        [HttpPost]
+        public StatusResponseModel Post(int userId, int projectId)
+        {
+            StatusResponseModel _objResponseModel = new StatusResponseModel();
+
+            string query = @"insert into ProjectUserRelation (user_id,project_id) values (@user_id, @project_id)";
+            DataTable table = new DataTable();
+
+            string sqlDataSource = _configuration.GetConnectionString("Default");
+            SqlDataReader myReader;
+
+            using (SqlConnection myCon = new SqlConnection(sqlDataSource))
+            {
+                myCon.Open();
+                using (SqlCommand myCommand = new SqlCommand(query, myCon))
+                {
+                    myCommand.Parameters.AddWithValue("@user_id", userId);
+                    myCommand.Parameters.AddWithValue("@project_id", projectId);
+                    myReader = myCommand.ExecuteReader();
+                    table.Load(myReader);
+                }
+
+                _objResponseModel.Message = "New project user relation data created successfully";
+
+                myReader.Close();
+                myCon.Close();
+            }
+
+            _objResponseModel.Status = true;
+
+            return _objResponseModel;
+        }
+
+
+
+
+
         [HttpPost]
         public StatusResponseModel Post(Project projectdata)
         {
@@ -364,6 +405,41 @@ namespace capstoneDotNet.Controllers
             _objResponseModel.Message = "Project data updated successfully";
             return _objResponseModel;
         }
+
+        //delete user link to project
+        [Route("UserProjects")]
+        [HttpDelete]
+        public StatusResponseModel Delete(int userId, int projectId)
+        {
+            StatusResponseModel _objResponseModel = new StatusResponseModel();
+
+            string query = @"delete from ProjectUserRelation where user_id = @user_id and project_id = @project_id";
+
+            DataTable table = new DataTable();
+
+            string sqlDataSource = _configuration.GetConnectionString("Default");
+            SqlDataReader myReader;
+
+            using (SqlConnection myCon = new SqlConnection(sqlDataSource))
+            {
+                myCon.Open();
+                using (SqlCommand myCommand = new SqlCommand(query, myCon))
+                {
+                    myCommand.Parameters.AddWithValue("@user_id", userId);
+                    myCommand.Parameters.AddWithValue("@project_id", projectId);
+                    myReader = myCommand.ExecuteReader();
+                    table.Load(myReader);
+                    myReader.Close();
+                    myCon.Close();
+                }
+
+                _objResponseModel.Status = true;
+                _objResponseModel.Message = "Project user relation data deleted successfully";
+                return _objResponseModel;
+            }
+
+        }
+
 
         [HttpDelete("{id}")]
         public StatusResponseModel Delete(int id)
