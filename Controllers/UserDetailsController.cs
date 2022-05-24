@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
+using capstoneDotNet.DTOs;
 using capstoneDotNet.Models;
 using Microsoft.AspNetCore.Mvc;
 
@@ -58,7 +61,8 @@ namespace capstoneDotNet.Controllers
                 temp.firstName = table.Rows[i]["first_name"].ToString();
                 temp.lastName = table.Rows[i]["last_name"].ToString();
                 temp.email = table.Rows[i]["email"].ToString();
-                temp.password = table.Rows[i]["password"].ToString();
+                temp.passwordHash = table.Rows[i]["password_hash"].ToString();
+                temp.passwordSalt = table.Rows[i]["password_salt"].ToString();
                 temp.role = table.Rows[i]["role"].ToString();
                 temp.designation = table.Rows[i]["designation"].ToString();
                 userList.Add(temp);
@@ -128,18 +132,25 @@ namespace capstoneDotNet.Controllers
             return _objResponseModel;
         }
 
-
-        [Route("signup")]
-        [HttpPost]
-        public StatusResponseModel Post (UserDetails userdata)
+        [HttpPost("signup")]
+        public async Task<ActionResult<RegisterUserDto>> Signup(RegisterUserDto userdata)
         {
-            StatusResponseModel _objResponseModel = new StatusResponseModel();
+            using var hmac = new HMACSHA512();
+
+            var password = userdata.password;
+
+            var user = new UserDetails
+            {
+                email = userdata.email.ToLower(),
+                passwordHash = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(password))),
+                passwordSalt = Convert.ToBase64String(hmac.Key)
+            };
 
             string queryEmail = @"select count(*) from User_Details where email = @email";
 
             int RowExists = 0;
 
-            string query = @"insert into User_Details(first_name, last_name, email, password) values (@first_name, @last_name, @email, @password)";
+            string query = @"insert into User_Details(first_name, last_name, email, password_hash, password_salt) values (@first_name, @last_name, @email, @password_hash, @password_salt)";
 
             DataTable table = new DataTable();
 
@@ -158,32 +169,114 @@ namespace capstoneDotNet.Controllers
 
                 if (RowExists == 1)
                 {
-                    _objResponseModel.Message = "The email already exist. Please login";
+                    return BadRequest("Email already exists. Please login or signup with a different email address");
                 }
 
                 else
-                {
+                { 
                     using (SqlCommand myCommand = new SqlCommand(query, myCon))
-                    {
-                        myCommand.Parameters.AddWithValue("@first_name", userdata.firstName);
-                        myCommand.Parameters.AddWithValue("@last_name", userdata.lastName);
-                        myCommand.Parameters.AddWithValue("@email", userdata.email);
-                        myCommand.Parameters.AddWithValue("@password", userdata.password);
-                        myReader = myCommand.ExecuteReader();
-                        table.Load(myReader);
-                    }
-                    _objResponseModel.Message = "User account created successfully";
+                        {
+                                myCommand.Parameters.AddWithValue("@first_name", userdata.firstName);
+                                myCommand.Parameters.AddWithValue("@last_name", userdata.lastName);
+                                myCommand.Parameters.AddWithValue("@email", user.email);
+                                myCommand.Parameters.AddWithValue("@password_hash", user.passwordHash);
+                                myCommand.Parameters.AddWithValue("@password_salt", user.passwordSalt);
+                        
 
+                                myReader = myCommand.ExecuteReader();
+                                table.Load(myReader);
+                        }
+                }
+                myReader.Close();
+                myCon.Close();
+
+                return Ok(user);
+            }
+        }
+
+        [HttpPost("login")]
+        public async Task<ActionResult> Login(LoginDto userdata)
+        {
+
+            string query = @"select * from User_Details where email = @email";
+
+            DataTable table = new DataTable();
+
+            string sqlDataSource = _configuration.GetConnectionString("Default");
+            SqlDataReader myReader;
+
+            using (SqlConnection myCon = new SqlConnection(sqlDataSource))
+            {
+                myCon.Open();
+                using (SqlCommand myCommand = new SqlCommand(query, myCon))
+                {
+                    myCommand.Parameters.AddWithValue("@email", userdata.email);
+                    myReader = myCommand.ExecuteReader();
+                    table.Load(myReader);
                     myReader.Close();
                     myCon.Close();
+                }
+
+            }
+
+            List<dynamic> userList = new List<dynamic>();
+
+            if (table.Rows.Count == 0)
+            {
+                return BadRequest("Invalid email address. Please login with the correct email address");
+            }
+
+            else
+            {
+                for (int i = 0; i < table.Rows.Count; i++)
+                {
+                    UserDetails temp = new UserDetails();
+
+                    temp.email = table.Rows[i]["email"].ToString();
+                    temp.passwordHash = table.Rows[i]["password_hash"].ToString();
+                    temp.passwordSalt = table.Rows[i]["password_salt"].ToString();
+                    userList.Add(temp);
 
                 }
-                
-             }
-            
-            _objResponseModel.Status = true;
-            return _objResponseModel;
+
+                //using var hmac = new HMACSHA512(Convert.FromBase64String(userList[0].passwordSalt));
+
+                var loginPassword = userdata.password;
+
+                var storedPasswordHash = Convert.FromBase64String(userList[0].passwordHash);
+
+                if (!VerifyPasswordHash(loginPassword, storedPasswordHash, userList[0].passwordSalt))
+                {
+                    return BadRequest("Invalid password");
+                }
+
+                return Ok(userList);
+
+                //var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(loginPassword));
+
+                //for (int y = 0; y < computedHash.Length; y++)
+                //{
+                //    if (computedHash[y] != storedPasswordHash[y]) return BadRequest("Invalid password");
+                //}
+
+                //return Ok(userList);
+            }
         }
+
+        private bool VerifyPasswordHash(string loginPassword, byte[] storedPasswordHash, string storedPasswordSalt)
+        {
+            using var hmac = new HMACSHA512(Convert.FromBase64String(storedPasswordSalt));
+
+            var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(loginPassword));
+
+            for (int y = 0; y < computedHash.Length; y++)
+            {
+                if (computedHash[y] != storedPasswordHash[y]) return false;
+            }
+
+            return true;
+        }
+
 
         [Route("manageUsers")]
         [HttpPut]
