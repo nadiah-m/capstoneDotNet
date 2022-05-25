@@ -7,7 +7,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using capstoneDotNet.DTOs;
+using capstoneDotNet.Interfaces;
 using capstoneDotNet.Models;
+using capstoneDotNet.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -22,13 +25,16 @@ namespace capstoneDotNet.Controllers
     {
         private IConfiguration _configuration;
         private readonly IWebHostEnvironment _env;
+        private readonly ITokenService _tokenService;
 
-        public UsersController(IConfiguration config, IWebHostEnvironment env)
+        public UsersController(IConfiguration config, IWebHostEnvironment env, ITokenService tokenService)
         {
             _configuration = config;
             _env = env;
+            _tokenService = tokenService;
         }
 
+        //get all users
         [HttpGet]
         public ResponseModel Get()
         {
@@ -74,6 +80,9 @@ namespace capstoneDotNet.Controllers
             return _objResponseModel;
         }
 
+
+        //get id of user
+        [Authorize]
         [HttpGet("{id}")]
         public ResponseModel Get(int id)
         {
@@ -132,8 +141,9 @@ namespace capstoneDotNet.Controllers
             return _objResponseModel;
         }
 
+        //sign up account
         [HttpPost("signup")]
-        public async Task<ActionResult<RegisterUserDto>> Signup(RegisterUserDto userdata)
+        public async Task<ActionResult<string>> Signup(UserDetails userdata)
         {
             using var hmac = new HMACSHA512();
 
@@ -190,12 +200,15 @@ namespace capstoneDotNet.Controllers
                 myReader.Close();
                 myCon.Close();
 
-                return Ok(user);
+                string token = _tokenService.CreateToken(userdata);
+
+                return Ok(token);
             }
         }
 
+        //login
         [HttpPost("login")]
-        public async Task<ActionResult> Login(LoginDto userdata)
+        public async Task<ActionResult<UserDto>> Login(UserDetails userdata)
         {
 
             string query = @"select * from User_Details where email = @email";
@@ -239,8 +252,6 @@ namespace capstoneDotNet.Controllers
 
                 }
 
-                //using var hmac = new HMACSHA512(Convert.FromBase64String(userList[0].passwordSalt));
-
                 var loginPassword = userdata.password;
 
                 var storedPasswordHash = Convert.FromBase64String(userList[0].passwordHash);
@@ -250,17 +261,23 @@ namespace capstoneDotNet.Controllers
                     return BadRequest("Invalid password");
                 }
 
-                return Ok(userList);
-
-                //var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(loginPassword));
-
-                //for (int y = 0; y < computedHash.Length; y++)
-                //{
-                //    if (computedHash[y] != storedPasswordHash[y]) return BadRequest("Invalid password");
-                //}
-
-                //return Ok(userList);
             }
+
+            string token = _tokenService.CreateToken(userdata);
+
+            var userDto = new UserDto
+            {
+                email = userdata.email,
+                token = token,
+                role = userdata.role
+            };
+
+
+
+            return Ok(userDto);
+
+
+          
         }
 
         private bool VerifyPasswordHash(string loginPassword, byte[] storedPasswordHash, string storedPasswordSalt)
@@ -278,6 +295,7 @@ namespace capstoneDotNet.Controllers
         }
 
 
+        //update role and designation 
         [Route("manageUsers")]
         [HttpPut]
         public StatusResponseModel Put(UserDetails userdata)
@@ -317,6 +335,8 @@ namespace capstoneDotNet.Controllers
             return _objResponseModel;
         }
 
+
+        //delete user
         [HttpDelete("{id}")]
         public StatusResponseModel Delete(int id)
         {
