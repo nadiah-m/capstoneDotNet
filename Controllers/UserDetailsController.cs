@@ -141,6 +141,64 @@ namespace capstoneDotNet.Controllers
             return _objResponseModel;
         }
 
+        //find user by email
+        [HttpGet("userExists")]
+        public ResponseModel FindEmail(string email)
+        {
+            ResponseModel _objResponseModel = new ResponseModel();
+
+            string query = @"
+                            select * from User_Details where email = @email
+                            ";
+
+            DataTable table = new DataTable();
+
+            string sqlDataSource = _configuration.GetConnectionString("Default");
+            SqlDataReader myReader;
+
+            using (SqlConnection myCon = new SqlConnection(sqlDataSource))
+            {
+                myCon.Open();
+                using (SqlCommand myCommand = new SqlCommand(query, myCon))
+                {
+                    myCommand.Parameters.AddWithValue("@email", email);
+                    myReader = myCommand.ExecuteReader();
+                    table.Load(myReader);
+                    myReader.Close();
+                    myCon.Close();
+                }
+            }
+
+            List<dynamic> userList = new List<dynamic>();
+
+            if (table.Rows.Count == 0)
+            {
+                _objResponseModel.Message = "No such id can be found";
+            }
+            else
+            {
+                for (int i = 0; i < table.Rows.Count; i++)
+                {
+                    UserDetails temp = new UserDetails();
+                    temp.id = Convert.ToInt32(table.Rows[i]["id"]);
+                    temp.firstName = table.Rows[i]["first_name"].ToString();
+                    temp.lastName = table.Rows[i]["last_name"].ToString();
+                    temp.email = table.Rows[i]["email"].ToString();
+                    temp.role = table.Rows[i]["role"].ToString();
+                    temp.designation = table.Rows[i]["designation"].ToString();
+                    userList.Add(temp);
+
+                }
+                _objResponseModel.Message = "A user with this email already exists";
+            }
+
+            _objResponseModel.Data = userList;
+            _objResponseModel.Status = true;
+            //status if success or fail
+
+            return _objResponseModel;
+        }
+
         //sign up account
         [HttpPost("signup")]
         public async Task<ActionResult<string>> Signup(UserDetails userdata)
