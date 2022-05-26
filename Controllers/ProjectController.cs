@@ -131,9 +131,9 @@ namespace capstoneDotNet.Controllers
         
 
         [HttpPost]
-        public StatusResponseModel Post(Project projectdata)
+        public async Task<ActionResult<Project>> Post(Project projectdata)
         {
-            StatusResponseModel _objResponseModel = new StatusResponseModel();
+            
 
             string queryProject = @"select count(*) from Project_Details where project_name = @project_name";
 
@@ -160,7 +160,9 @@ namespace capstoneDotNet.Controllers
 
                 if (RowExists == 1)
                 {
-                    _objResponseModel.Message = "The project already exist. Please create a new project";
+
+                    return BadRequest("The project already exists");
+
                 }
                 else
                 {
@@ -177,16 +179,14 @@ namespace capstoneDotNet.Controllers
                         myReader = myCommand.ExecuteReader();
                         table.Load(myReader);
                     }
-                    _objResponseModel.Message = "New project created successfully";
-
-                    myReader.Close();
-                    myCon.Close();
+                    
+                  
                 }
+                myReader.Close();
+                myCon.Close();
             }
 
-            _objResponseModel.Status = true;
-
-            return _objResponseModel;
+            return Ok(projectdata);
         }
 
         [HttpPut]
