@@ -201,7 +201,7 @@ namespace capstoneDotNet.Controllers
 
         //sign up account
         [HttpPost("signup")]
-        public async Task<ActionResult<string>> Signup(UserDetails userdata)
+        public async Task<ActionResult<UserDto>> Signup(UserDetails userdata)
         {
             using var hmac = new HMACSHA512();
 
@@ -260,7 +260,16 @@ namespace capstoneDotNet.Controllers
 
                 string token = _tokenService.CreateToken(userdata);
 
-                return Ok(token);
+                var userDto = new UserDto
+                {
+                    email = userdata.email,
+                    token = token,
+                    role = userdata.role
+                };
+
+
+
+                return Ok(userDto);
             }
         }
 
@@ -303,9 +312,13 @@ namespace capstoneDotNet.Controllers
                 {
                     UserDetails temp = new UserDetails();
 
+                    temp.id = Convert.ToInt32(table.Rows[i]["id"]);
+                    temp.firstName = table.Rows[i]["first_name"].ToString();
                     temp.email = table.Rows[i]["email"].ToString();
                     temp.passwordHash = table.Rows[i]["password_hash"].ToString();
                     temp.passwordSalt = table.Rows[i]["password_salt"].ToString();
+                    temp.role = table.Rows[i]["role"].ToString();
+                    
                     userList.Add(temp);
 
                 }
@@ -325,9 +338,11 @@ namespace capstoneDotNet.Controllers
 
             var userDto = new UserDto
             {
+                id= userList[0].id,
+                firstName = userList[0].firstName,
                 email = userdata.email,
                 token = token,
-                role = userdata.role
+                role = userList[0].role
             };
 
 

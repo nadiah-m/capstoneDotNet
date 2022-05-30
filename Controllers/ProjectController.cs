@@ -184,9 +184,11 @@ namespace capstoneDotNet.Controllers
                 }
                 myReader.Close();
                 myCon.Close();
+
+                return Ok(projectdata);
             }
 
-            return Ok(projectdata);
+            
         }
 
         [HttpPut]

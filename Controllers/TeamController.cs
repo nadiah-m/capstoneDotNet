@@ -153,65 +153,7 @@ namespace capstoneDotNet.Controllers
             return _objResponseModel;
         }
 
-        //get projectuser table id to delete
-        //[Route("UserProjectsId")]
-        //[HttpGet()]
-        //public ResponseModel GetUserProjectId(int userId, int projectId)
-        //{
-        //    ResponseModel _objResponseModel = new ResponseModel();
-
-        //    string query = @"
-        //                    select *
-        //                    from ProjectUserRelation
-        //                    where user_id=@user_id and project_id=@project_id
-        //                    ";
-
-        //    DataTable table = new DataTable();
-
-        //    string sqlDataSource = _configuration.GetConnectionString("Default");
-        //    SqlDataReader myReader;
-
-        //    using (SqlConnection myCon = new SqlConnection(sqlDataSource))
-        //    {
-        //        myCon.Open();
-        //        using (SqlCommand myCommand = new SqlCommand(query, myCon))
-        //        {
-        //            myCommand.Parameters.AddWithValue("@user_id", userId);
-        //            myCommand.Parameters.AddWithValue("@project_id", projectId);
-        //            myReader = myCommand.ExecuteReader();
-        //            table.Load(myReader);
-        //            myReader.Close();
-        //            myCon.Close();
-        //        }
-        //    }
-
-        //    List<dynamic> projectUserList = new List<dynamic>();
-
-        //    if (table.Rows.Count == 0)
-        //    {
-        //        _objResponseModel.Message = "No such id can be found";
-        //    }
-        //    else
-        //    {
-        //        for (int i = 0; i < table.Rows.Count; i++)
-        //        {
-        //            Team temp = new Team();
-
-        //            temp.projectUserId = Convert.ToInt32(table.Rows[i]["project_user_id"]);
-                   
-        //            projectUserList.Add(temp);
-        //        }
-        //        _objResponseModel.Message = "Project data for user received successfully";
-        //    }
-
-        //    _objResponseModel.Data = projectUserList;
-        //    _objResponseModel.Status = true;
-        //    //status if success or fail
-
-        //    return _objResponseModel;
-        //}
-
-
+        
 
         //assign user to project
 
